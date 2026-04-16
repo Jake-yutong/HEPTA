@@ -400,31 +400,81 @@ elif page == "run":
             hdr = f"Q{q.id} [{q.dimension}]"
 
             if mock_mode:
-                rng = random.Random()
-                sv  = round(rng.uniform(20, 50) if phase == "pre" else rng.uniform(60, 90), 1)
-                scores.append(ScoreRecord(question_id=q.id, dimension=q.dimension, score=sv, rationale="[mock]"))
-                with st.expander(f"{hdr} — {sv:.1f}"):
-                    st.write(q.text[:200])
+                rng = random.Random(hash(q.id))
+                if phase == "pre":
+                    sv = round(rng.uniform(20, 50), 1)
+                    scores.append(ScoreRecord(question_id=q.id, dimension=q.dimension, score=sv, rationale="[mock]"))
+                    with st.expander(f"{hdr} — {sv:.1f}"):
+                        st.markdown(f"**{t('question', lang)}:** {q.text[:200]}")
+                        st.markdown(f"**{t('student_answer', lang)}:** [mock] {sv:.1f}")
+                else:
+                    sv_base = round(rng.uniform(20, 50), 1)
+                    sv_post = round(rng.uniform(60, 90), 1)
+                    improve = sv_post - sv_base
+                    sign = "+" if improve >= 0 else ""
+                    scores.append(ScoreRecord(question_id=q.id, dimension=q.dimension, score=sv_post, rationale="[mock]"))
+                    with st.expander(f"{hdr} — {sv_base:.1f} → {sv_post:.1f}", expanded=False):
+                        st.markdown(f"**{t('question', lang)}:** {q.text[:200]}")
+                        st.markdown(f"#### {t('step_baseline', lang)}")
+                        st.write("[mock] Student's initial answer before any teaching.")
+                        st.caption(f"🔹 {t('baseline_score', lang)}: **{sv_base:.1f}** — [mock]")
+                        st.divider()
+                        st.markdown(f"#### {t('step_teaching', lang)}")
+                        st.info("[mock] Teacher's guidance and explanation for this question.")
+                        st.divider()
+                        st.markdown(f"#### {t('step_intervention', lang)}")
+                        st.write("[mock] Student's improved answer after reviewing the guidance.")
+                        st.caption(f"🔸 {t('intervention_score', lang)}: **{sv_post:.1f}** — [mock]")
+                        st.success(f"{t('score_improve', lang)}: {sign}{improve:.1f}")
             else:
                 assert bundle is not None
-                guidance = ""
                 try:
-                    with st.expander(hdr):
-                        st.markdown(f"**{t('question', lang)}:** {q.text}")
-                        if phase == "post":
+                    if phase == "pre":
+                        with st.expander(hdr, expanded=False):
+                            st.markdown(f"**{t('question', lang)}:** {q.text}")
+                            with st.spinner(t("student_answer", lang) + "…"):
+                                ans = bundle.student.answer_baseline(q)
+                            st.markdown(f"**{t('student_answer', lang)}:**")
+                            st.write(ans)
+                            with st.spinner(t("judge_result", lang) + "…"):
+                                rec = bundle.judge.evaluate(q, ans, rubric_dict.get(q.dimension))
+                            st.caption(f"🔹 {t('judge_result', lang)}: **{rec.score:.1f}** — {rec.rationale}")
+                        scores.append(rec)
+                    else:
+                        with st.expander(hdr, expanded=True):
+                            st.markdown(f"**{t('question', lang)}:** {q.text}")
+
+                            # Step 1: student baseline (no guidance)
+                            st.markdown(f"#### {t('step_baseline', lang)}")
+                            with st.spinner(t("student_baseline_answer", lang) + "…"):
+                                ans_base = bundle.student.answer_baseline(q)
+                            st.write(ans_base)
+                            with st.spinner(t("judge_result", lang) + "…"):
+                                rec_base = bundle.judge.evaluate(q, ans_base, rubric_dict.get(q.dimension))
+                            st.caption(f"🔹 {t('baseline_score', lang)}: **{rec_base.score:.1f}** — {rec_base.rationale}")
+
+                            st.divider()
+
+                            # Step 2: teacher generates guidance
+                            st.markdown(f"#### {t('step_teaching', lang)}")
                             with st.spinner(t("teaching_guidance", lang) + "…"):
                                 guidance = bundle.teacher.teach(q)
-                            st.markdown(f"**{t('teaching_guidance', lang)}:**")
                             st.info(guidance)
-                        with st.spinner(t("student_answer", lang) + "…"):
-                            ans = bundle.student.answer_baseline(q) if phase == "pre" \
-                                  else bundle.student.answer_intervention(q, guidance)
-                        st.markdown(f"**{t('student_answer', lang)}:**")
-                        st.write(ans)
-                        with st.spinner(t("judge_result", lang) + "…"):
-                            rec = bundle.judge.evaluate(q, ans, rubric_dict.get(q.dimension))
-                        st.markdown(f"**{t('judge_result', lang)}:** {rec.score:.1f} — {rec.rationale}")
-                    scores.append(rec)
+
+                            st.divider()
+
+                            # Step 3: student answers with guidance
+                            st.markdown(f"#### {t('step_intervention', lang)}")
+                            with st.spinner(t("student_intervention_answer", lang) + "…"):
+                                ans_post = bundle.student.answer_intervention(q, guidance)
+                            st.write(ans_post)
+                            with st.spinner(t("judge_result", lang) + "…"):
+                                rec = bundle.judge.evaluate(q, ans_post, rubric_dict.get(q.dimension))
+                            improve = rec.score - rec_base.score
+                            sign = "+" if improve >= 0 else ""
+                            st.caption(f"🔸 {t('intervention_score', lang)}: **{rec.score:.1f}** — {rec.rationale}")
+                            st.success(f"{t('score_improve', lang)}: {sign}{improve:.1f}")
+                        scores.append(rec)
                 except Exception as exc:
                     st.warning(f"{hdr}: {exc}")
                     scores.append(ScoreRecord(question_id=q.id, dimension=q.dimension, score=0.0, rationale=str(exc)))
