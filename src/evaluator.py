@@ -128,13 +128,32 @@ def load_rubric(path: Path) -> List[RubricItem]:
 # ---------------------------------------------------------------------------
 
 def extract_json_object(text: str) -> Optional[Dict[str, Any]]:
-    """Extract the first JSON object from *text*."""
+    """Extract the first flat JSON object from *text* (no nested braces)."""
     match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
     if match:
         try:
             return json.loads(match.group())
         except json.JSONDecodeError:
             return None
+    return None
+
+
+def extract_json_object_nested(text: str) -> Optional[Dict[str, Any]]:
+    """Extract the first JSON object from *text*, supporting nested objects."""
+    start = text.find("{")
+    if start == -1:
+        return None
+    depth = 0
+    for i, ch in enumerate(text[start:], start):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(text[start : i + 1])
+                except json.JSONDecodeError:
+                    return None
     return None
 
 
