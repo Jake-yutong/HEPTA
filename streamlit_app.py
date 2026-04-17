@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -56,8 +57,8 @@ DATA_DIR    = Path("data")
 RESULTS_DIR = Path("results")
 OUTPUTS_DIR = Path("outputs")
 
-Q_CANDIDATES = ["test_questions.xlsx", "test_questions.json", "test_questions.jsonl"]
-R_CANDIDATES = ["rubric.xlsx", "rubric.json", "rubric.jsonl"]
+Q_CANDIDATES = ["test_questions.xlsx", "test_questions.json", "test_questions.jsonl", "test_questions.txt"]
+R_CANDIDATES = ["rubric.xlsx", "rubric.json", "rubric.jsonl", "rubric.txt"]
 PROVIDERS    = list(PROVIDER_BASE_URLS.keys())
 
 # ---------------------------------------------------------------------------
@@ -94,6 +95,10 @@ def _init_state() -> None:
     ]:
         if f"{role}_config" not in st.session_state:
             st.session_state[f"{role}_config"] = ModelConfig(**defaults)
+    # Cached uploaded data (survives page switches)
+    for key in ("cached_questions", "cached_rubric", "cached_q_name", "cached_r_name"):
+        if key not in st.session_state:
+            st.session_state[key] = None
 
 _init_state()
 
@@ -146,17 +151,158 @@ def _find(directory: Path, candidates: list[str]) -> Optional[Path]:
     return None
 
 
+def _read_upload(uploaded) -> pd.DataFrame:
+    """Read an uploaded file into a DataFrame, auto-detecting separator for txt/csv."""
+    suffix = Path(uploaded.name).suffix.lower()
+    raw = uploaded.read()
+    data = BytesIO(raw)
+    if suffix == ".xlsx":
+        return pd.read_excel(data, engine="openpyxl")
+    if suffix == ".json":
+        return pd.read_json(data)
+    if suffix == ".jsonl":
+        return pd.read_json(data, lines=True)
+    if suffix in (".txt", ".csv", ".tsv"):
+        text = raw.decode("utf-8-sig")
+        first_line = text.split("\n", 1)[0]
+        for sep in ("\t", ",", "|"):
+            if sep in first_line:
+                return pd.read_csv(BytesIO(raw), sep=sep, encoding="utf-8-sig")
+        # Last resort: comma fallback (pandas guess may fail on free-form text)
+        raise ValueError("NOT_TABULAR")
+    raise ValueError(f"Unsupported format: {suffix}")
+
+
+def _normalise_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Lowercase & strip column names to tolerate minor formatting differences."""
+    df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+    return df
+
+
+# ---------------------------------------------------------------------------
+# HEPTA structured-text parsers
+# ---------------------------------------------------------------------------
+
+# Standard HEPTA benchmark mappings
+_SA_DIM = {1: "CE", 2: "TE", 3: "TA", 4: "CE", 5: "HCP", 6: "CE", 7: "CE", 8: "TE", 9: "CPI"}
+_MCQ_ANS = {1: "C", 2: "B", 3: "C", 4: "B", 5: "B", 6: "C", 7: "D", 8: "B", 9: "C"}
+_Q_AREA = {1: "Breadth", 2: "Breadth", 3: "Breadth",
+           4: "Methods", 5: "Methods", 6: "Methods",
+           7: "Depth",   8: "Depth",   9: "Depth"}
+
+
+def _is_hepta_questions_txt(text: str) -> bool:
+    return bool(re.search(r'QUESTION\s+\d+', text) and
+                ('\u3010\u9009\u62e9\u9898\u3011' in text or '\u3010\u7b80\u7b54\u9898\u3011' in text))
+
+
+def _is_hepta_rubric_txt(text: str) -> bool:
+    return bool(re.search(r'RUBRIC|SCORING', text, re.I) and
+                ('\u3010\u8bc4\u5206\u7ef4\u5ea6' in text or '\u3010\u8bc4\u5206\u7ec6\u5219\u3011' in text
+                 or re.search(r'SECTION\s+III', text)))
+
+
+def _parse_hepta_questions_txt(text: str) -> List[Question]:
+    """Parse the HEPTA-Bench structured questions txt file."""
+    questions: List[Question] = []
+    q_iter = list(re.finditer(r'QUESTION\s+(\d+)\s*:', text))
+    for idx, m in enumerate(q_iter):
+        qnum = int(m.group(1))
+        start = m.end()
+        end = q_iter[idx + 1].start() if idx + 1 < len(q_iter) else len(text)
+        block = text[start:end]
+        area = _Q_AREA.get(qnum, "General")
+
+        # Extract MCQ
+        mcq_m = re.search(r'\u3010\u9009\u62e9\u9898\u3011(.*?)(?=\u3010\u7b80\u7b54\u9898\u3011|$)', block, re.DOTALL)
+        if mcq_m:
+            mcq_text = mcq_m.group(1).strip()
+            questions.append(Question(
+                id=f"{qnum}_mc", area=area, dimension="OBJ",
+                text=mcq_text,
+                reference_answer=_MCQ_ANS.get(qnum, ""),
+                max_score=100.0,
+            ))
+
+        # Extract short answer
+        sa_m = re.search(r'\u3010\u7b80\u7b54\u9898\u3011(.*?)(?=-{20,}|={20,}|QUESTION\s+\d+|$)', block, re.DOTALL)
+        if sa_m:
+            sa_text = sa_m.group(1).strip()
+            questions.append(Question(
+                id=f"{qnum}_sa", area=area,
+                dimension=_SA_DIM.get(qnum, "CE"),
+                text=sa_text,
+                reference_answer="",
+                max_score=100.0,
+            ))
+    return questions
+
+
+def _parse_hepta_rubric_txt(text: str) -> List[RubricItem]:
+    """Parse the HEPTA-Bench structured rubric txt file."""
+    items: List[RubricItem] = []
+
+    # Section III general dimension rubrics: 【N. NAME (CODE) - WEIGHT%】
+    dim_iter = list(re.finditer(
+        r'\u3010(\d+)\.\s+([^(]+?)\s*\((\w+)\)\s*-\s*(\d+)%\u3011', text))
+    for idx, m in enumerate(dim_iter):
+        dim_code = m.group(3)
+        start = m.end()
+        end = dim_iter[idx + 1].start() if idx + 1 < len(dim_iter) else len(text)
+        criteria = text[start:end].strip()
+        # Trim trailing section separators
+        criteria = re.split(r'={40,}', criteria)[0].strip()
+        criteria = re.split(r'-{40,}\s*$', criteria)[0].strip()
+        items.append(RubricItem(
+            dimension=dim_code,
+            criteria=criteria,
+            max_score=100.0,
+        ))
+
+    # Fallback: per-question rubrics from Section II if Section III missing
+    if not items:
+        pq_iter = list(re.finditer(
+            r'\u3010\u8003\u67e5\u7ef4\u5ea6\u3011\s*(\w+)', text))
+        for m in pq_iter:
+            dim = m.group(1)
+            start = m.end()
+            sec_end = text.find('\u3010\u8003\u67e5\u7ef4\u5ea6\u3011', start)
+            if sec_end == -1:
+                sec_end = len(text)
+            criteria = text[start:sec_end].strip()[:2000]
+            items.append(RubricItem(dimension=dim, criteria=criteria, max_score=100.0))
+
+    return items
+
+
 def _load_questions_upload(uploaded) -> List[Question]:
     suffix = Path(uploaded.name).suffix.lower()
-    data   = BytesIO(uploaded.read())
-    if suffix == ".xlsx":
-        df = pd.read_excel(data, engine="openpyxl")
-    elif suffix == ".json":
-        df = pd.read_json(data)
-    elif suffix == ".jsonl":
-        df = pd.read_json(data, lines=True)
-    else:
-        raise ValueError(f"Unsupported format: {suffix}")
+    # For txt files: try HEPTA structured format first
+    if suffix == ".txt":
+        raw = uploaded.read()
+        text = raw.decode("utf-8-sig")
+        if _is_hepta_questions_txt(text):
+            qs = _parse_hepta_questions_txt(text)
+            if qs:
+                return qs
+        # Not HEPTA-format, try tabular
+        uploaded.seek(0)
+
+    try:
+        df = _normalise_columns(_read_upload(uploaded))
+    except ValueError:
+        raise ValueError(
+            "Cannot parse questions file. Expected either:\n"
+            "• A tabular file (xlsx/json/jsonl/csv/tsv) with columns: id, area, dimension, text\n"
+            "• A HEPTA-Bench structured txt file with QUESTION markers and 【选择题】/【简答题】 tags"
+        )
+    required = {"id", "area", "dimension", "text"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"Questions file missing columns: {missing}. "
+            f"Found: {list(df.columns)}"
+        )
     return [
         Question(
             id=str(row["id"]), area=str(row["area"]), dimension=str(row["dimension"]),
@@ -169,15 +315,31 @@ def _load_questions_upload(uploaded) -> List[Question]:
 
 def _load_rubric_upload(uploaded) -> List[RubricItem]:
     suffix = Path(uploaded.name).suffix.lower()
-    data   = BytesIO(uploaded.read())
-    if suffix == ".xlsx":
-        df = pd.read_excel(data, engine="openpyxl")
-    elif suffix == ".json":
-        df = pd.read_json(data)
-    elif suffix == ".jsonl":
-        df = pd.read_json(data, lines=True)
-    else:
-        raise ValueError(f"Unsupported format: {suffix}")
+    # For txt files: try HEPTA structured format first
+    if suffix == ".txt":
+        raw = uploaded.read()
+        text = raw.decode("utf-8-sig")
+        if _is_hepta_rubric_txt(text):
+            items = _parse_hepta_rubric_txt(text)
+            if items:
+                return items
+        uploaded.seek(0)
+
+    try:
+        df = _normalise_columns(_read_upload(uploaded))
+    except ValueError:
+        raise ValueError(
+            "Cannot parse rubric file. Expected either:\n"
+            "• A tabular file (xlsx/json/jsonl/csv/tsv) with columns: dimension, criteria\n"
+            "• A HEPTA-Bench structured rubric txt file with dimension rubric blocks"
+        )
+    required = {"dimension", "criteria"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"Rubric file missing columns: {missing}. "
+            f"Found: {list(df.columns)}"
+        )
     return [
         RubricItem(
             dimension=str(row["dimension"]), criteria=str(row["criteria"]),
@@ -255,18 +417,31 @@ def _api_panel(role: str) -> None:
     cs, ct2 = st.columns(2)
     with cs:
         if st.button(t("save_config", lang), key=f"{role}_save"):
-            st.session_state[f"{role}_config"] = ModelConfig(
+            new_cfg = ModelConfig(
                 provider=provider, api_key=api_key, model_name=model_name,
                 base_url=base_url, temperature=temperature, max_tokens=int(max_tokens),
             )
+            st.session_state[f"{role}_config"] = new_cfg
             st.success(t("config_saved", lang))
+            # Auto-verify connection after save
+            if api_key:
+                with st.spinner(t("test_connection", lang) + "…"):
+                    try:
+                        verify_cfg = ModelConfig(
+                            provider=provider, api_key=api_key, model_name=model_name,
+                            base_url=base_url, temperature=temperature, max_tokens=64,
+                        )
+                        LLMClientFactory.create(verify_cfg).generate("Reply OK")
+                        st.success(t("conn_ok", lang))
+                    except Exception as err:
+                        st.error(t("conn_fail", lang, err=str(err)))
     with ct2:
         if st.button(t("test_connection", lang), key=f"{role}_test"):
             if not api_key:
                 st.warning(t("api_not_configured", lang))
             else:
                 test_cfg = ModelConfig(provider=provider, api_key=api_key, model_name=model_name,
-                                       base_url=base_url, temperature=0.0, max_tokens=16)
+                                       base_url=base_url, temperature=temperature, max_tokens=64)
                 try:
                     LLMClientFactory.create(test_cfg).generate("Reply OK")
                     st.success(t("conn_ok", lang))
@@ -355,8 +530,31 @@ elif page == "run":
     st.markdown(t("run_desc", lang))
 
     with st.expander(t("upload_section", lang), expanded=False):
-        up_q = st.file_uploader(t("upload_questions", lang), type=["xlsx","json","jsonl"], key="up_q")
-        up_r = st.file_uploader(t("upload_rubric", lang),    type=["xlsx","json","jsonl"], key="up_r")
+        up_q = st.file_uploader(t("upload_questions", lang), type=["xlsx","json","jsonl","txt"], key="up_q")
+        up_r = st.file_uploader(t("upload_rubric", lang),    type=["xlsx","json","jsonl","txt"], key="up_r")
+        if up_q is not None:
+            try:
+                st.session_state["cached_questions"] = _load_questions_upload(up_q)
+                st.session_state["cached_q_name"] = up_q.name
+            except Exception as exc:
+                st.error(str(exc))
+        if up_r is not None:
+            try:
+                st.session_state["cached_rubric"] = _load_rubric_upload(up_r)
+                st.session_state["cached_r_name"] = up_r.name
+            except Exception as exc:
+                st.error(str(exc))
+        q_name = st.session_state.get("cached_q_name")
+        r_name = st.session_state.get("cached_r_name")
+        if q_name:
+            st.caption(f"✅ {t('test_questions', lang)}: {q_name}")
+        if r_name:
+            st.caption(f"✅ {t('rubric_dims', lang)}: {r_name}")
+        if q_name or r_name:
+            if st.button(t("clear_cache", lang), key="clear_upload_cache"):
+                for k in ("cached_questions", "cached_rubric", "cached_q_name", "cached_r_name"):
+                    st.session_state[k] = None
+                st.rerun()
 
     ca, cb, cc = st.columns(3)
     with ca:
@@ -364,22 +562,30 @@ elif page == "run":
     with cb:
         phase = st.selectbox(t("phase", lang), ["pre", "post"])
     with cc:
-        mock_mode = st.checkbox(t("mock_mode", lang), value=True, help=t("mock_help", lang))
+        mock_mode = st.checkbox(t("mock_mode", lang), value=False, help=t("mock_help", lang))
 
     if st.button(t("run_btn", lang), type="primary"):
-        # Load questions
+        # Load questions (cached upload → data/ directory)
         try:
-            questions = _load_questions_upload(up_q) if up_q else \
-                        (load_questions(p) if (p := _find(DATA_DIR, Q_CANDIDATES)) else None)
+            if st.session_state.get("cached_questions"):
+                questions = st.session_state["cached_questions"]
+            elif (p := _find(DATA_DIR, Q_CANDIDATES)):
+                questions = load_questions(p)
+            else:
+                questions = None
             if questions is None:
                 st.error(t("data_missing", lang)); st.stop()
         except Exception as exc:
             st.error(str(exc)); st.stop()
 
-        # Load rubric
+        # Load rubric (cached upload → data/ directory)
         try:
-            rubric_list = _load_rubric_upload(up_r) if up_r else \
-                          (load_rubric(rp) if (rp := _find(DATA_DIR, R_CANDIDATES)) else None)
+            if st.session_state.get("cached_rubric"):
+                rubric_list = st.session_state["cached_rubric"]
+            elif (rp := _find(DATA_DIR, R_CANDIDATES)):
+                rubric_list = load_rubric(rp)
+            else:
+                rubric_list = None
             if rubric_list is None:
                 st.error(t("data_missing", lang)); st.stop()
         except Exception as exc:
@@ -389,7 +595,10 @@ elif page == "run":
 
         bundle: Optional[APIBundle] = None
         if not mock_mode:
-            bundle = _build_bundle()
+            try:
+                bundle = _build_bundle()
+            except Exception as exc:
+                st.error(f"{t('api_not_configured', lang)}: {exc}"); st.stop()
             if bundle is None:
                 st.error(t("api_not_configured", lang)); st.stop()
 
@@ -415,16 +624,18 @@ elif page == "run":
                     scores.append(ScoreRecord(question_id=q.id, dimension=q.dimension, score=sv_post, rationale="[mock]"))
                     with st.expander(f"{hdr} — {sv_base:.1f} → {sv_post:.1f}", expanded=False):
                         st.markdown(f"**{t('question', lang)}:** {q.text[:200]}")
-                        st.markdown(f"#### {t('step_baseline', lang)}")
-                        st.write("[mock] Student's initial answer before any teaching.")
-                        st.caption(f"🔹 {t('baseline_score', lang)}: **{sv_base:.1f}** — [mock]")
-                        st.divider()
-                        st.markdown(f"#### {t('step_teaching', lang)}")
-                        st.info("[mock] Teacher's guidance and explanation for this question.")
-                        st.divider()
-                        st.markdown(f"#### {t('step_intervention', lang)}")
-                        st.write("[mock] Student's improved answer after reviewing the guidance.")
-                        st.caption(f"🔸 {t('intervention_score', lang)}: **{sv_post:.1f}** — [mock]")
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.markdown(f"**{t('step_baseline', lang)}**")
+                            st.write("[mock] Student's initial answer before any teaching.")
+                            st.caption(f"🔹 {t('baseline_score', lang)}: **{sv_base:.1f}**")
+                        with col2:
+                            st.markdown(f"**{t('step_teaching', lang)}**")
+                            st.info("[mock] Teacher's guidance and explanation.")
+                        with col3:
+                            st.markdown(f"**{t('step_intervention', lang)}**")
+                            st.write("[mock] Student's improved answer after guidance.")
+                            st.caption(f"🔸 {t('intervention_score', lang)}: **{sv_post:.1f}**")
                         st.success(f"{t('score_improve', lang)}: {sign}{improve:.1f}")
             else:
                 assert bundle is not None
@@ -443,40 +654,41 @@ elif page == "run":
                     else:
                         with st.expander(hdr, expanded=True):
                             st.markdown(f"**{t('question', lang)}:** {q.text}")
-
-                            # Step 1: student baseline (no guidance)
-                            st.markdown(f"#### {t('step_baseline', lang)}")
-                            with st.spinner(t("student_baseline_answer", lang) + "…"):
-                                ans_base = bundle.student.answer_baseline(q)
-                            st.write(ans_base)
-                            with st.spinner(t("judge_result", lang) + "…"):
-                                rec_base = bundle.judge.evaluate(q, ans_base, rubric_dict.get(q.dimension))
-                            st.caption(f"🔹 {t('baseline_score', lang)}: **{rec_base.score:.1f}** — {rec_base.rationale}")
-
                             st.divider()
+                            col1, col2, col3 = st.columns(3)
 
-                            # Step 2: teacher generates guidance
-                            st.markdown(f"#### {t('step_teaching', lang)}")
-                            with st.spinner(t("teaching_guidance", lang) + "…"):
-                                guidance = bundle.teacher.teach(q)
-                            st.info(guidance)
+                            with col1:
+                                st.markdown(f"**{t('step_baseline', lang)}**")
+                                with st.spinner(t("student_baseline_answer", lang) + "…"):
+                                    ans_base = bundle.student.answer_baseline(q)
+                                st.write(ans_base)
+                                with st.spinner(t("judge_result", lang) + "…"):
+                                    rec_base = bundle.judge.evaluate(q, ans_base, rubric_dict.get(q.dimension))
+                                st.caption(f"🔹 {t('baseline_score', lang)}: **{rec_base.score:.1f}**")
+                                st.caption(rec_base.rationale)
 
-                            st.divider()
+                            with col2:
+                                st.markdown(f"**{t('step_teaching', lang)}**")
+                                with st.spinner(t("teaching_guidance", lang) + "…"):
+                                    guidance = bundle.teacher.teach(q)
+                                st.info(guidance)
 
-                            # Step 3: student answers with guidance
-                            st.markdown(f"#### {t('step_intervention', lang)}")
-                            with st.spinner(t("student_intervention_answer", lang) + "…"):
-                                ans_post = bundle.student.answer_intervention(q, guidance)
-                            st.write(ans_post)
-                            with st.spinner(t("judge_result", lang) + "…"):
-                                rec = bundle.judge.evaluate(q, ans_post, rubric_dict.get(q.dimension))
-                            improve = rec.score - rec_base.score
-                            sign = "+" if improve >= 0 else ""
-                            st.caption(f"🔸 {t('intervention_score', lang)}: **{rec.score:.1f}** — {rec.rationale}")
-                            st.success(f"{t('score_improve', lang)}: {sign}{improve:.1f}")
+                            with col3:
+                                st.markdown(f"**{t('step_intervention', lang)}**")
+                                with st.spinner(t("student_intervention_answer", lang) + "…"):
+                                    ans_post = bundle.student.answer_intervention(q, guidance)
+                                st.write(ans_post)
+                                with st.spinner(t("judge_result", lang) + "…"):
+                                    rec = bundle.judge.evaluate(q, ans_post, rubric_dict.get(q.dimension))
+                                improve = rec.score - rec_base.score
+                                sign = "+" if improve >= 0 else ""
+                                st.caption(f"🔸 {t('intervention_score', lang)}: **{rec.score:.1f}**")
+                                st.caption(rec.rationale)
+                                st.success(f"{t('score_improve', lang)}: {sign}{improve:.1f}")
                         scores.append(rec)
                 except Exception as exc:
-                    st.warning(f"{hdr}: {exc}")
+                    with st.expander(f"❌ {hdr}", expanded=True):
+                        st.error(str(exc))
                     scores.append(ScoreRecord(question_id=q.id, dimension=q.dimension, score=0.0, rationale=str(exc)))
 
             progress.progress((i + 1) / len(questions), text=f"{hdr} done")

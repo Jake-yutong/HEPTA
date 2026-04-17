@@ -1,0 +1,463 @@
+
+================================================================================
+HEPTA-BENCH COMPLETE SCORING RUBRIC & ANSWER KEY (V2.0)
+Human-Computer Interaction Teaching Assessment
+Total Score: 100 Points | 9 Questions | 7 Dimensions
+================================================================================
+
+【评分维度权重分配】
+CE: 15% | TA: 15% | HCP: 15% | TE: 15% | CPI: 15% | MA: 15% | OBJ: 10%
+
+================================================================================
+SECTION I: OBJECTIVE QUESTIONS ANSWER KEY (OBJ - 10%)
+================================================================================
+
+Q1 (CE维度): C - Symbolic gesture
+Q2 (MA维度): B - To avoid designer bias and elicit natural mental models  
+Q3 (CE维度): C - Users treat 1-3 fingers as a "single point" and vary usage casually
+Q4 (HCP维度): B - AR emphasizes transferability and workability over generalizability
+Q5 (HCP维度): B - Model Monopoly
+Q6 (HCP维度): C - Generalizability (不是AR的Trustworthiness组成部分)
+Q7 (TE维度): D - Level 4: Evolving Adaptive Systems
+Q8 (TE维度): B - They cannot realistically simulate AI inference errors
+Q9 (CPI维度): C - Prolonged Engagement
+
+评分标准: 每题11.11分 (100/9), 总分按10%权重计入最终成绩
+
+================================================================================
+SECTION II: SHORT ANSWER SCORING GUIDE & EXEMPLARS
+================================================================================
+
+--------------------------------------------------------------------------------
+QUESTION 1: Object-Centric vs World-Dependent Binding
+--------------------------------------------------------------------------------
+【考查维度】CE (Conceptual Explanation) + TE (Technical Elucidation)
+
+【参考答案】(150 words max):
+Object-Centric binding defines gesture location relative to object features (e.g., pinching an object to shrink it), while World-Dependent binding references world/screen features (e.g., dragging to screen edge to delete). Example: Dragging an object—under Object-Centric, the gesture moves the object itself; under World-Dependent, dragging to the top edge might minimize the window. The same physical movement carries different semantic meanings based on the reference frame.
+
+【评分细则】
+Score 90-100 (Excellent-CE/TE):
+- 准确定义两种binding类型 (Object-Centric: relative to object; World-Dependent: relative to world/screen)
+- 使用具体例子清晰展示差异（如拖拽对象本身 vs 拖拽到屏幕边缘）
+- 提及"reference frame"或"spatial reference"概念
+- 解释为何同一手势在不同binding下功能不同
+
+Score 75-89 (Good-CE/TE):
+- 定义基本正确但缺乏技术术语精确性
+- 例子恰当但不够具体或仅描述一种binding
+- 理解概念但解释reference frame关系不够清晰
+
+Score 60-74 (Satisfactory-CE/TE):
+- 混淆两种binding或定义模糊
+- 例子未能清晰展示差异
+- 缺少reference frame概念
+
+Score 0-59 (Poor-CE/TE):
+- 完全误解binding概念
+- 例子与binding类型无关
+
+--------------------------------------------------------------------------------
+QUESTION 2: Agreement Score Formula & Widget Implication
+--------------------------------------------------------------------------------
+【考查维度】TE (Technical Elucidation) + TA (Tradeoff Analysis)
+
+【参考答案】(150 words max):
+Agreement Score A = Σ(|Pi|/|Pr|)², where Pi is each identical gesture group and Pr is all gestures for a referent. Low agreement indicates users lack shared mental models for that command—they perform different, conflicting gestures. This suggests the command's intended function isn't intuitively matched with a specific physical action. Rather than forcing an arbitrary gesture that users won't guess naturally, designers should use on-screen widgets (buttons/menus) that explicitly show available options, reducing cognitive load and errors.
+
+【评分细则】
+Score 90-100 (Excellent-TE/TA):
+- 准确写出公式 A = Σ(|Pi|/|Pr|)² 并解释变量含义
+- 解释low agreement的含义：用户间缺乏共识/心理模型不一致
+- 清晰论证为何需要widget：避免强制任意映射，降低认知负担
+- 提及cognitive load或error prevention
+
+Score 75-89 (Good-TE/TA):
+- 公式正确但变量解释不够精确
+- 理解low agreement含义但解释过于简单
+- 能论证widget必要性但缺少认知负荷考量
+
+Score 60-74 (Satisfactory-TE/TA):
+- 公式记忆有误但理解大致正确
+- 将low agreement误解为其他概念
+- widget论证不够有力
+
+Score 0-59 (Poor-TE/TA):
+- 公式完全错误
+- 无法理解agreement与widget的关系
+
+--------------------------------------------------------------------------------
+QUESTION 3: Finger Count Flexibility - Designer vs User Defined
+--------------------------------------------------------------------------------
+【考查维度】TA (Tradeoff Analysis) + CE (Conceptual Explanation)
+
+【参考答案】(150 words max):
+Designer-defined gestures often strictly differentiate finger counts (1-finger=select, 2-finger=zoom), optimizing for recognition reliability. User-defined gestures show users casually vary 1-3 fingers, treating them as interchangeable "single points." This mismatch occurs because designers prioritize technical discrimination (reliable recognition) while users prioritize cognitive simplicity (natural motor behavior). Systems requiring specific finger counts fail to match user expectations because they violate the "invisibility" of good interaction—users must consciously control finger deployment rather than acting naturally.
+
+【评分细则】
+Score 90-100 (Excellent-TA/CE):
+- 准确对比设计师（严格区分）vs用户（1-3指随意）的态度差异
+- 分析权衡：技术可靠性(reliable recognition) vs 认知自然性(cognitive simplicity)
+- 解释失败原因：违反直觉/增加认知负担/不够"隐形"
+- 提及"invisibility"或"natural behavior"
+
+Score 75-89 (Good-TA/CE):
+- 对比基本正确但缺乏深度
+- 能识别权衡但分析不够全面
+- 解释失败原因较为简单
+
+Score 60-74 (Satisfactory-TA/CE):
+- 仅描述表面差异，未触及权衡本质
+- 未能解释为何设计师选择特定策略
+
+Score 0-59 (Poor-TA/CE):
+- 完全误解finger count研究结论
+
+--------------------------------------------------------------------------------
+QUESTION 4: Action Research Spiral Definition
+--------------------------------------------------------------------------------
+【考查维度】CE (Conceptual Explanation) + HCP (Historical Context)
+
+【参考答案】(150 words max):
+The Action Research Spiral consists of three core components: Planning (problem formulation and intervention design), Action (implementing the intervention), and Reflection (fact-finding and evaluating effects). Unlike linear hypothesis-testing where researchers test pre-defined hypotheses once, AR iteratively cycles through these stages, with each reflection informing redefined planning. This creates progressive refinement through continuous learning, whereas traditional research seeks to confirm/reject fixed hypotheses without mid-course adaptation. The spiral acknowledges that understanding emerges through doing and that problems evolve as interventions unfold.
+
+【评分细则】
+Score 90-100 (Excellent-CE/HCP):
+- 准确列出Planning-Action-Reflection三阶段
+- 清晰对比线性假设检验（一次性验证）vs 螺旋迭代（持续改进）
+- 强调"emergence through doing"或"progressive refinement"
+- 提及problems evolve/context changes
+
+Score 75-89 (Good-CE/HCP):
+- 三阶段正确但对比不够深入
+- 理解迭代性但未能强调与传统研究的本质差异
+
+Score 60-74 (Satisfactory-CE/HCP):
+- 三阶段名称正确但解释模糊
+- 对比简单或缺少对比
+
+Score 0-59 (Poor-CE/HCP):
+- 混淆AR螺旋与其他循环（如UCD）
+- 完全错误描述过程
+
+--------------------------------------------------------------------------------
+QUESTION 5: AR vs PD Scope and Goals
+--------------------------------------------------------------------------------
+【考查维度】HCP (Historical Context) + CPI (Cross-Paper Integration)
+
+【参考答案】(150 words max):
+Participatory Design (PD) focuses primarily on design processes—engaging users in creating solutions. Action Research (AR) has broader scope: it emphasizes learning through action, constructing scholarly knowledge, and achieving sustainable organizational change. For long-term community projects, AR is superior because PD may end at product delivery, while AR requires researchers to ensure solutions remain viable after departure. AR's "workability" criterion demands practical effectiveness, not just theoretical validity, ensuring technologies are maintained locally rather than creating dependency on external researchers.
+
+【评分细则】
+Score 90-100 (Excellent-HCP/CPI):
+- 准确区分PD范围（设计过程）vs AR范围（知识构建+可持续变革）
+- 解释为何AR适合长期项目：可持续性(sustainability)、离开后维护、workability标准
+- 提及dependency问题或local capacity building
+- 引用workability或sustainable change概念
+
+Score 75-89 (Good-HCP/CPI):
+- 基本区分两者但深度不足
+- 能解释AR优势但缺少具体机制（如workability）
+
+Score 60-74 (Satisfactory-HCP/CPI):
+- 区分模糊或仅列举差异
+- 未能充分论证长期项目适用性
+
+Score 0-59 (Poor-HCP/CPI):
+- 混淆AR与PD或认为两者完全相同
+
+--------------------------------------------------------------------------------
+QUESTION 6: Friendly Outsider Role & Model Monopoly Prevention
+--------------------------------------------------------------------------------
+【考查维度】CE (Conceptual Explanation) + MA (Methodological Application)
+
+【参考答案】(150 words max):
+The "Friendly Outsider" acts as a facilitator/coach rather than expert designer, opening communication lines and validating local knowledge as equally important to scientific expertise. To prevent "Model Monopoly" (researchers dominating through academic credentials), strategies include: explicit power-sharing in decision-making, using participants' language (verbatim principle), member checking (informants verifying data), ensuring alternate contribution methods for non-academic partners, and collaborative writing from project start. The researcher must consciously step back to avoid using argumentation skills and literature knowledge to silence community voices.
+
+【评分细则】
+Score 90-100 (Excellent-CE/MA):
+- 准确定义Friendly Outsider角色（facilitator/coach, 非专家）
+- 列出至少3种防止Model Monopoly的具体策略
+- 强调权力分享(equal weight)和本地知识价值
+- 提及verbatim principle或member checking等具体技术
+
+Score 75-89 (Good-CE/MA):
+- 角色定义正确但策略列举不全
+- 理解权力平衡但缺少具体实施方法
+
+Score 60-74 (Satisfactory-CE/MA):
+- 角色理解有偏差（如仍视为专家）
+- 仅列举1-2种策略或策略不够具体
+
+Score 0-59 (Poor-CE/MA):
+- 完全误解角色或策略
+
+--------------------------------------------------------------------------------
+QUESTION 7: Capability Uncertainty vs Output Complexity
+--------------------------------------------------------------------------------
+【考查维度】CE (Conceptual Explanation) + TE (Technical Elucidation)
+
+【参考答案】(150 words max):
+Capability Uncertainty refers to unpredictability in what AI can do and how well it performs, changing as systems learn from new data. Output Complexity concerns the variability of possible outputs, ranging from few fixed options to infinite adaptive possibilities. Capability Uncertainty complicates prototyping because designers cannot anticipate performance degradation or improvement over time—what works today may fail tomorrow as the system evolves. Output Complexity complicates sketching because designers cannot enumerate all possible system behaviors to create comprehensive wireframes, especially for Level 4 systems generating context-dependent infinite variations.
+
+【评分细则】
+Score 90-100 (Excellent-CE/TE):
+- 准确定义两种复杂性（能力不确定性：随时间变化；输出复杂性：可能性数量）
+- 分别解释对原型设计的影响（Capability→时间维度/演化；Output→空间维度/枚举）
+- 提及Level 4系统或context-dependent variation
+- 区分clearly: 时间vs空间维度
+
+Score 75-89 (Good-CE/TE):
+- 定义正确但区分不够sharp
+- 能解释影响但缺少维度对比（时间vs空间）
+
+Score 60-74 (Satisfactory-CE/TE):
+- 定义有混淆或遗漏
+- 未能清楚区分两种复杂性对设计的不同影响
+
+Score 0-59 (Poor-CE/TE):
+- 完全混淆两个概念
+
+--------------------------------------------------------------------------------
+QUESTION 8: Sketching Difficulty for Level 4 Systems
+--------------------------------------------------------------------------------
+【考查维度】TE (Technical Elucidation) + TA (Tradeoff Analysis)
+
+【参考答案】(150 words max):
+Level 4 systems (Evolving Adaptive) combine continuous learning with infinite adaptive outputs. Traditional sketching fails because: (1) Static representations cannot capture temporal evolution—system capabilities change post-deployment as they learn; (2) Finite sketches cannot represent infinite output possibilities that vary by user/context; (3) Two-way adaptation (user-system co-evolution) creates emergent behaviors impossible to predict from initial designs. Unlike static UIs where designers can wireframe all states, Level 4 systems are "living" sociotechnical systems requiring prototyping methods that accommodate uncertainty and evolution, such as longitudinal field trials rather than fixed prototypes.
+
+【评分细则】
+Score 90-100 (Excellent-TE/TA):
+- 准确识别Level 4特征（evolving + adaptive/infinite）
+- 列出3个失败原因：静态无法捕捉时间演化、有限无法表示无限、双向适应产生涌现行为
+- 提及"living system"或"sociotechnical"概念
+- 提出替代方案（longitudinal trials）
+
+Score 75-89 (Good-TE/TA):
+- 识别特征正确但原因分析不够全面
+- 理解静态限制但缺少涌现行为分析
+
+Score 60-74 (Satisfactory-TE/TA):
+- 仅描述Level 4但未解释为何草图失效
+- 原因分析表面（如只说"太复杂"）
+
+Score 0-59 (Poor-TE/TA):
+- 混淆Level 4与其他级别
+- 无法解释草图局限性
+
+--------------------------------------------------------------------------------
+QUESTION 9: Synthesis - AR for User-Defined Gestures in AI Systems
+--------------------------------------------------------------------------------
+【考查维度】CPI (Cross-Paper Integration) + MA (Methodological Application)
+
+【参考答案】(150 words max):
+Action Research methodology could improve gesture set design for AI-powered surfaces by addressing Yang's "Capability Uncertainty" through the AR spiral. Rather than one-time gesture elicitation (Wobbrock), the AR spiral enables longitudinal cycles: Plan (design initial gesture set), Act (deploy with users), Reflect (analyze how gestures evolve as AI adapts). This captures user-system co-evolution—how user gestures change as the AI's recognition capabilities evolve, and vice versa. For Level 4 systems, AR's "Prolonged Engagement" ensures researchers observe emergent interaction patterns over time, while "Member Checking" verifies that gesture interpretations remain valid as the system learns, addressing the situated capability uncertainty that static user studies miss.
+
+【评分细则】
+Score 90-100 (Excellent-CPI/MA):
+- 明确连接AR螺旋与Yang的Capability Uncertainty
+- 具体展示如何将AR应用于手势研究（Plan-Act-Reflect替代一次性elicitation）
+- 解释user-system co-evolution在手势语境中的含义
+- 引用Prolonged Engagement或Member Checking解决Level 4挑战
+- 三篇论文整合流畅（Wobbrock方法+Hayes方法论+Yang问题框架）
+
+Score 75-89 (Good-CPI/MA):
+- 能连接AR与手势研究但缺少具体机制
+- 理解co-evolution但解释不够深入
+- 整合较好但缺少某一论文的关键引用
+
+Score 60-74 (Satisfactory-CPI/MA):
+- 仅简单提及两领域相似性
+- 未能展示具体如何应用AR改进手势研究
+- 整合 superficial
+
+Score 0-59 (Poor-CPI/MA):
+- 未能展示跨文献联系
+- 回答孤立处理各论文
+
+================================================================================
+SECTION III: GENERAL DIMENSION RUBRICS (For Holistic Assessment)
+================================================================================
+
+【1. CONCEPTUAL EXPLANATION (CE) - 15%】
+Definition: Accuracy and clarity in explaining core HCI concepts, theories, and terminology.
+
+Score 90-100 (Excellent):
+- Precise understanding of all key concepts (Referents/Signs, AR Spiral, Capability Uncertainty, etc.)
+- Uses terminology correctly and consistently
+- Demonstrates deep comprehension beyond surface definitions
+- No factual errors
+
+Score 75-89 (Good):
+- Solid grasp of most concepts with minor inaccuracies
+- Appropriate terminology use with occasional imprecision
+- Clear explanations but may lack nuance in some areas
+- 1-2 minor factual errors
+
+Score 60-74 (Satisfactory):
+- Basic understanding but misses key details
+- Some terminology confusion
+- Explanations incomplete or partially inaccurate
+- 3-4 factual errors
+
+Score 0-59 (Poor):
+- Fundamental misunderstanding of core concepts
+- Misuses technical terminology extensively
+- Explanations confused or contradictory
+
+--------------------------------------------------------------------------------
+
+【2. TRADEOFF ANALYSIS (TA) - 15%】
+Definition: Ability to identify, describe, and evaluate design tradeoffs and competing priorities.
+
+Score 90-100 (Excellent):
+- Identifies multiple relevant tradeoffs (1-hand vs 2-hand, AR vs PD, WoZ vs functional prototypes)
+- Articulates clear reasoning for choosing approaches
+- Considers context-dependent factors
+- Demonstrates awareness of implicit costs/benefits
+
+Score 75-89 (Good):
+- Identifies primary tradeoffs with reasonable justification
+- Logical reasoning but may miss secondary considerations
+- Shows awareness of context but analysis somewhat superficial
+
+Score 60-74 (Satisfactory):
+- Identifies obvious tradeoffs but misses subtle tensions
+- Reasoning simplistic or one-dimensional
+- Limited consideration of contextual factors
+- Binary (good/bad) thinking
+
+Score 0-59 (Poor):
+- Fails to identify relevant tradeoffs
+- Presents choices as obvious or without alternatives
+- No consideration of context
+
+--------------------------------------------------------------------------------
+
+【3. HISTORICAL CONTEXT & PERSISTENCE (HCP) - 15%】
+Definition: Understanding of theoretical lineage and evolution of ideas.
+
+Score 90-100 (Excellent):
+- Accurately traces historical lineage (Lewin → Sociotechnical → AR/PD; Desktop → Surface)
+- Identifies key figures (Dewey, Lewin, Ehn/Kyng) and contributions
+- Explains how history shapes contemporary practice
+
+Score 75-89 (Good):
+- Shows awareness of historical development with minor gaps
+- Identifies major figures but may miss connections
+- Understands current methods have historical roots
+
+Score 60-74 (Satisfactory):
+- Shows limited historical awareness
+- May confuse timelines or attribute ideas incorrectly
+- Treats theories as ahistorical
+
+Score 0-59 (Poor):
+- No demonstrated understanding of historical context
+- Anachronistic attributions
+
+--------------------------------------------------------------------------------
+
+【4. TECHNICAL ELUCIDATION (TE) - 15%】
+Definition: Clarity and accuracy in explaining technical mechanisms and formulas.
+
+Score 90-100 (Excellent):
+- Accurately explains technical mechanisms (Agreement Score, Taxonomy dimensions)
+- Describes formulas precisely without error
+- Clarifies relationships between components
+- Explains technical constraints and implications
+
+Score 75-89 (Good):
+- Generally accurate with minor errors
+- Understands formulas but explanation lacks precision
+- Grasps relationships but may simplify excessively
+
+Score 60-74 (Satisfactory):
+- Partial understanding of technical details
+- Significant errors in formula explanation
+- Confuses components or relationships
+
+Score 0-59 (Poor):
+- Major technical inaccuracies
+- Cannot explain basic formulas
+
+--------------------------------------------------------------------------------
+
+【5. CROSS-PAPER INTEGRATION (CPI) - 15%】
+Definition: Ability to synthesize insights across multiple papers.
+
+Score 90-100 (Excellent):
+- Draws explicit, insightful connections between papers
+- Identifies complementary or conflicting perspectives
+- Synthesizes frameworks to generate new insights
+- Holistic understanding of HCI as interconnected field
+
+Score 75-89 (Good):
+- Identifies clear connections between at least two papers
+- Recognizes complementary approaches
+- Shows synthesis ability but somewhat superficial
+
+Score 60-74 (Satisfactory):
+- Mentions connections but superficial or forced
+- Treats papers largely in isolation
+- Limited comparative analysis
+
+Score 0-59 (Poor):
+- Treats each paper as entirely separate
+- Fails to identify any relationships between concepts
+
+--------------------------------------------------------------------------------
+
+【6. METHODOLOGICAL APPLICATION (MA) - 15%】
+Definition: Ability to apply research methodologies to novel problems.
+
+Score 90-100 (Excellent):
+- Correctly applies methodologies to new contexts
+- Adapts methods appropriately for specific constraints
+- Anticipates practical challenges
+- Proposes creative extensions
+
+Score 75-89 (Good):
+- Applies methodologies correctly in straightforward contexts
+- Shows understanding of method steps
+- Some awareness of practical constraints
+
+Score 60-74 (Satisfactory):
+- Attempts application but with significant gaps
+- Misunderstands key steps
+- Limited awareness of constraints
+
+Score 0-59 (Poor):
+- Fundamental misunderstanding of methodology
+- Cannot apply methods even in simple contexts
+
+--------------------------------------------------------------------------------
+
+【7. OBJECTIVE QUESTIONS (OBJ) - 10%】
+Scoring: 9 questions × 11.11 points = 100 points max
+- Q1: C
+- Q2: B
+- Q3: C
+- Q4: B
+- Q5: B
+- Q6: C
+- Q7: D
+- Q8: B
+- Q9: C
+
+================================================================================
+SECTION IV: FINAL SCORE CALCULATION
+================================================================================
+
+Total Score = (CE × 0.15) + (TA × 0.15) + (HCP × 0.15) + (TE × 0.15) + (CPI × 0.15) + (MA × 0.15) + (OBJ × 0.10)
+
+Interpretation:
+90-100: Exceptional HCI teaching competency
+80-89: Strong competency with minor gaps  
+70-79: Adequate competency, areas for improvement
+60-69: Marginal competency, significant gaps
+<60: Inadequate, requires substantial remediation
+
+================================================================================
+END OF COMPLETE RUBRIC
+================================================================================

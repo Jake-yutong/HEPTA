@@ -72,7 +72,7 @@ class PhaseResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _read_file(path: Path) -> pd.DataFrame:
-    """Read a .xlsx, .json, or .jsonl file into a DataFrame."""
+    """Read a .xlsx, .json, .jsonl, or .txt file into a DataFrame."""
     suffix = path.suffix.lower()
     if suffix == ".xlsx":
         return pd.read_excel(path, engine="openpyxl")
@@ -80,6 +80,13 @@ def _read_file(path: Path) -> pd.DataFrame:
         return pd.read_json(path)
     if suffix == ".jsonl":
         return pd.read_json(path, lines=True)
+    if suffix in (".txt", ".csv", ".tsv"):
+        text = path.read_text(encoding="utf-8-sig")
+        first_line = text.split("\n", 1)[0]
+        for sep in ("\t", ",", "|"):
+            if sep in first_line:
+                return pd.read_csv(path, sep=sep, encoding="utf-8-sig")
+        return pd.read_csv(path, sep=None, engine="python", encoding="utf-8-sig")
     raise ValueError(f"Unsupported file format: {suffix}")
 
 

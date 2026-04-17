@@ -91,18 +91,37 @@ class OpenAICompatibleClient(LLMClient):
         base_url = config.base_url or PROVIDER_BASE_URLS.get(config.provider)
         self._client = OpenAI(api_key=config.api_key, base_url=base_url)
 
+    @staticmethod
+    def _is_thinking_model(model_name: str) -> bool:
+        """Return True for models that have a thinking/reasoning mode enabled by default.
+
+        Covers: deepseek-reasoner, DeepSeek-R1 variants, Qwen3 series, and any
+        model whose name contains 'thinking' or 'reasoner'.
+        """
+        lower = model_name.lower()
+        return any(k in lower for k in ("reasoner", "-r1", "qwen3", "thinking"))
+
     def generate(self, prompt: str, system: str = "") -> str:
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        response = self._client.chat.completions.create(
-            model=self.config.model_name,
-            messages=messages,
-            temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens,
-        )
+        kwargs: dict = {
+            "model": self.config.model_name,
+            "messages": messages,
+            "max_tokens": self.config.max_tokens,
+            "stream": False,
+        }
+
+        if self._is_thinking_model(self.config.model_name):
+            # Thinking/reasoning models (DeepSeek-reasoner, Qwen3, etc.) require
+            # enable_thinking=False for non-streaming calls; temperature must be omitted.
+            kwargs["extra_body"] = {"enable_thinking": False}
+        else:
+            kwargs["temperature"] = self.config.temperature
+
+        response = self._client.chat.completions.create(**kwargs)
         return response.choices[0].message.content or ""
 
 

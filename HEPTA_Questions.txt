@@ -1,0 +1,130 @@
+
+HEPTA-Bench HCI Education Assessment
+Based on: Wobbrock et al. (2009), Hayes (2011), Yang et al. (2020)
+
+================================================================================
+PART I: SURFACE COMPUTING & GESTURE INTERACTION (Wobbrock et al., 2009)
+================================================================================
+
+QUESTION 1: Gesture Taxonomy & Classification
+------------------------------------------------
+【选择题】Which category describes a gesture where the user draws a "?" symbol to invoke help?
+A. Physical gesture
+B. Metaphorical gesture  
+C. Symbolic gesture
+D. Abstract gesture
+
+【简答题】(≤150 words)
+Explain the difference between Object-Centric and World-Dependent binding in the Taxonomy of Surface Gestures. Provide one concrete example for each to illustrate how the same physical gesture (e.g., dragging) would function differently under these two binding types.
+
+--------------------------------------------------------------------------------
+
+QUESTION 2: User-Defined Gesture Methodology
+------------------------------------------------
+【选择题】In a Guessability Study, what is the primary purpose of showing participants the "referent" (effect) before asking for the "sign" (gesture)?
+A. To teach participants the correct gesture
+B. To avoid designer bias and elicit natural mental models
+C. To demonstrate the technical capabilities of the system
+D. To ensure participants use two hands instead of one
+
+【简答题】(≤150 words)
+Describe the formula for calculating Agreement Score (A) in user-defined gesture research. Explain why a low agreement score for a specific command suggests the need for on-screen widgets rather than gestures.
+
+--------------------------------------------------------------------------------
+
+QUESTION 3: Gesture Design Principles
+------------------------------------------------
+【选择题】According to the study, which statement about user finger usage is TRUE?
+A. Users prefer using exactly 3 fingers for all zooming operations
+B. Finger count matters significantly for distinguishing command types
+C. Users treat 1-3 fingers as a "single point" and vary usage casually
+D. Five-finger gestures are universally preferred for complex operations
+
+【简答题】(≤150 words)
+Compare designer-defined gestures with user-defined gestures in terms of finger count flexibility. Why do many designer-defined systems fail to match user expectations regarding the number of fingers used?
+
+================================================================================
+PART II: ACTION RESEARCH METHODOLOGY (Hayes, 2011)
+================================================================================
+
+QUESTION 4: Action Research Fundamentals
+------------------------------------------------
+【选择题】What distinguishes Action Research (AR) from traditional experimental research in terms of generalizability?
+A. AR seeks statistical generalization to large populations
+B. AR emphasizes transferability and workability over generalizability
+C. AR rejects the concept of validity entirely
+D. AR requires larger sample sizes than experimental research
+
+【简答题】(≤150 words)
+Define the "Action Research Spiral" and its three core components. Explain how this iterative process differs from the linear hypothesis-testing approach of traditional scientific research.
+
+--------------------------------------------------------------------------------
+
+QUESTION 5: Sociotechnical Systems & Collaboration
+------------------------------------------------
+【选择题】Which concept refers to the risk that researchers dominate conversations due to their academic credentials and argumentation skills?
+A. Friendly Outsider
+B. Model Monopoly  
+C. Member Checking
+D. Prolonged Engagement
+
+【简答题】(≤150 words)
+Contrast Participatory Design (PD) with Action Research (AR) in terms of scope and ultimate goals. Why might AR be more suitable than PD for long-term community technology projects?
+
+--------------------------------------------------------------------------------
+
+QUESTION 6: Research Ethics & Rigor
+------------------------------------------------
+【选择题】Which of the following is NOT one of the four components of Trustworthiness in Action Research?
+A. Credibility
+B. Transferability
+C. Generalizability
+D. Confirmability
+
+【简答题】(≤150 words)
+Explain the "Friendly Outsider" role in Action Research. How does this role address the tension between researcher expertise and community knowledge, and what specific strategies prevent "Model Monopoly"?
+
+================================================================================
+PART III: HUMAN-AI INTERACTION DESIGN (Yang et al., 2020)
+================================================================================
+
+QUESTION 7: AI Design Complexity Framework
+------------------------------------------------
+【选择题】A face recognition system that learns from new user photos after deployment AND generates infinite adaptive outputs (different tags for different people) belongs to which level?
+A. Level 1: Probabilistic Systems
+B. Level 2: Adaptive Systems
+C. Level 3: Evolving Probabilistic Systems
+D. Level 4: Evolving Adaptive Systems
+
+【简答题】(≤150 words)
+Distinguish between "Capability Uncertainty" and "Output Complexity" as sources of AI design challenges. Provide one example of how each factor independently complicates the prototyping process.
+
+--------------------------------------------------------------------------------
+
+QUESTION 8: Prototyping & Sketching AI
+------------------------------------------------
+【选择题】Why do Wizard of Oz (WoZ) methods fail to fully address AI interaction design challenges?
+A. They require too much technical expertise
+B. They cannot realistically simulate AI inference errors
+C. They are too expensive compared to functional prototypes
+D. Users cannot interact with them naturally
+
+【简答题】(≤150 words)
+Explain why traditional sketching methods struggle with Level 4 AI systems (Evolving Adaptive). Discuss the specific characteristics of these systems that make static representation insufficient.
+
+--------------------------------------------------------------------------------
+
+QUESTION 9: Cross-Paper Integration & Synthesis
+------------------------------------------------
+【选择题】Which methodology from the Action Research tradition could help address the "Capability Uncertainty" challenge in AI systems by enabling longitudinal observation of user-system co-evolution?
+A. Double Diamond design process
+B. Guessability Study
+C. Prolonged Engagement
+D. A/B testing
+
+【简答题】(≤150 words)
+Synthesize insights from all three papers: How might Action Research methodology improve the design of user-defined gesture sets for AI-powered surface computing? Specifically, explain how the AR spiral could address limitations identified in Yang's framework regarding evolving adaptive systems.
+
+================================================================================
+END OF QUESTION SET
+================================================================================
