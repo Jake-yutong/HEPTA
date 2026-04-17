@@ -11,6 +11,7 @@ pipeline:
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Dict, List, Optional
 
 from src.evaluator import (
@@ -33,36 +34,78 @@ _TEACHER_SYSTEM = (
     "You are an expert HCI educator with comprehensive knowledge of canonical HCI research "
     "literature (Vannevar Bush 1945 to present). Your role is to generate concise, "
     "pedagogically effective guidance to help a student better answer an HCI exam question. "
+    "You are teaching, not answering. Convert knowledge into hints, distinctions, reasoning steps, and answer structure. "
     "Structure your response as:\n"
     "1. Core concept clarification (1–2 sentences)\n"
-    "2. Key papers and arguments to draw upon\n"
-    "3. Suggested response structure\n"
-    "Keep your guidance under 300 words. Do not write the full answer."
+    "2. Key papers, concepts, and reasoning cues to draw upon\n"
+    "3. Suggested response structure or decision process\n"
+    "4. Common mistakes to avoid\n"
+    "RULES (strict):\n"
+    "- Do NOT provide the final answer.\n"
+    "- Do NOT provide the final multiple-choice letter or directly state which option is correct.\n"
+    "- Do NOT write a polished model response the student could copy verbatim.\n"
+    "- For multiple-choice parts: explain how to eliminate options or what concept identifies the correct choice, without naming the final option.\n"
+    "- For short-answer parts: give key concepts, contrasts, and structure, not the final prose answer.\n"
+    "Keep your guidance under 220 words."
 )
 
 _STUDENT_BASELINE_SYSTEM = (
     "You are a graduate student in Computer Science preparing for the HCI Qualifying Examination. "
     "Answer the question based on your knowledge of HCI research. "
-    "Be precise, cite specific papers where relevant, and demonstrate depth of understanding.\n\n"
+    "Be precise and academically accurate. Mention papers only when directly needed.\n\n"
     "OUTPUT RULES (strict):\n"
     "- Do NOT restate or paraphrase the question.\n"
+    "- Do NOT greet the reader. Do NOT say hello, thanks, or any similar opening.\n"
     "- For multiple-choice parts: output ONLY the letter (e.g. 'C'), no explanation unless the question explicitly asks for one.\n"
-    "- For short-answer / essay parts: go straight to the answer. No preamble, no summary paragraph at the end.\n"
-    "- Do NOT add introductory sentences like 'This is a great question' or 'Let me explain'.\n"
-    "- Keep answers concise and information-dense. Every sentence must add new substance."
+    "- For short-answer / essay parts: give only the direct answer body. No preamble, no recap, no conclusion paragraph.\n"
+    "- If the question contains both a choice part and a short-answer part, you MUST answer BOTH parts. Omitting either part is incorrect.\n"
+    "- When both parts exist, output only the choice answer plus the short-answer response in the requested format.\n"
+    "- Do NOT add introductory sentences like 'This is a great question', 'Let me explain', or 'Here is my answer'.\n"
+    "- Keep the short answer compact. Avoid long explanations, bullet lists, and repetition."
 )
 
 _STUDENT_INTERVENTION_SYSTEM = (
     "You are a graduate student in Computer Science preparing for the HCI Qualifying Examination. "
     "Your instructor has provided pedagogical guidance for this question. "
-    "Using the guidance, provide a thorough and well-structured answer.\n\n"
+    "Using the guidance, provide a concise and accurate answer.\n\n"
     "OUTPUT RULES (strict):\n"
     "- Do NOT restate or paraphrase the question.\n"
+    "- Do NOT greet the reader. Do NOT say hello, thanks, or any similar opening.\n"
     "- For multiple-choice parts: output ONLY the letter (e.g. 'C'), no explanation unless the question explicitly asks for one.\n"
-    "- For short-answer / essay parts: go straight to the answer. No preamble, no summary paragraph at the end.\n"
-    "- Do NOT add introductory sentences like 'This is a great question' or 'Let me explain'.\n"
-    "- Keep answers concise and information-dense. Every sentence must add new substance."
+    "- For short-answer / essay parts: give only the direct answer body. No preamble, no recap, no conclusion paragraph.\n"
+    "- If the question contains both a choice part and a short-answer part, you MUST answer BOTH parts. Omitting either part is incorrect.\n"
+    "- When both parts exist, output only the choice answer plus the short-answer response in the requested format.\n"
+    "- Do NOT add introductory sentences like 'This is a great question', 'Let me explain', or 'Here is my answer'.\n"
+    "- Keep the short answer compact. Avoid long explanations, bullet lists, and repetition."
 )
+
+
+def _student_output_spec(question_text: str) -> str:
+    """Return a strict output format instruction for the student agent."""
+    has_mcq = bool(re.search(
+        r'【(选择题|单选题|多选题|判断题)】|(?:^|\n)\s*[A-D]\s*[.)）]',
+        question_text,
+        re.I,
+    ))
+    has_short = bool(re.search(r'【(简答题|论述题|问答题|填空题|问题)】', question_text))
+
+    if has_mcq and has_short:
+        return (
+            "Return exactly this format and nothing else:\n"
+            "MCQ: <single letter>\n"
+            "SA: <direct short answer>\n"
+            "Both lines are mandatory. Do not omit either part. "
+            "Do not add greetings, headings, bullets, or extra explanation."
+        )
+    if has_mcq:
+        return (
+            "Return only one line in this format: MCQ: <single letter>\n"
+            "Do not add any explanation."
+        )
+    return (
+        "Return only one line in this format: SA: <direct short answer>\n"
+        "Do not add greetings, headings, bullets, or extra explanation."
+    )
 
 _JUDGE_SYSTEM = (
     "You are an expert HCI examiner. Score the student answer on a 0–100 scale "
@@ -118,8 +161,12 @@ class StudentAPI:
         system = _STUDENT_BASELINE_SYSTEM
         if pre_exam_constraints:
             system = f"[Pre-Exam Requirements]\n{pre_exam_constraints}\n\n" + system
+        prompt = (
+            f"[Output Format]\n{_student_output_spec(question.text)}\n\n"
+            f"[Question]\n{question.text}"
+        )
         return self.client.generate(
-            prompt=question.text,
+            prompt=prompt,
             system=system,
         )
 
@@ -131,6 +178,7 @@ class StudentAPI:
             system = f"[Pre-Exam Requirements]\n{pre_exam_constraints}\n\n" + system
         prompt = (
             f"[Instructor Guidance]\n{guidance}\n\n"
+            f"[Output Format]\n{_student_output_spec(question.text)}\n\n"
             f"[Question]\n{question.text}"
         )
         return self.client.generate(prompt=prompt, system=system)

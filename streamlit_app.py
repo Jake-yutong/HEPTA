@@ -83,6 +83,8 @@ st.markdown(
 # Session-state initialisation
 # ---------------------------------------------------------------------------
 
+_UPLOAD_CACHE_SCHEMA_VERSION = 2
+
 def _init_state() -> None:
     if "lang" not in st.session_state:
         st.session_state["lang"] = "en"
@@ -100,6 +102,11 @@ def _init_state() -> None:
                 "cached_pre_exam_constraints"):
         if key not in st.session_state:
             st.session_state[key] = None
+    if st.session_state.get("upload_cache_schema_version") != _UPLOAD_CACHE_SCHEMA_VERSION:
+        for key in ("cached_questions", "cached_rubric", "cached_q_name", "cached_r_name",
+                    "cached_pre_exam_constraints"):
+            st.session_state[key] = None
+        st.session_state["upload_cache_schema_version"] = _UPLOAD_CACHE_SCHEMA_VERSION
 
 _init_state()
 
@@ -188,6 +195,13 @@ def _normalise_columns(df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 _KNOWN_DIMS = set(DIMENSIONS)  # {"OBJ", "CE", "TA", "HCP", "TE", "CPI", "MA"}
 
+_QUESTION_HEADER_PATTERNS = (
+    re.compile(r'^\s*QUESTION[\s_-]*(\d+)\s*[:.：\-]?\s*(.*)$', re.I),
+    re.compile(r'^\s*Q[\s_-]*(\d+)\s*[:.：\-]?\s*(.*)$', re.I),
+    re.compile(r'^\s*题目?[\s_-]*(\d+)\s*[:.：\-]?\s*(.*)$', re.I),
+    re.compile(r'^\s*第\s*(\d+)\s*题\s*[:.：\-]?\s*(.*)$', re.I),
+)
+
 
 # ---------------------------------------------------------------------------
 # HEPTA structured-text parsers (multi-strategy, content-agnostic)
@@ -202,20 +216,87 @@ def _is_hepta_questions_txt(text: str) -> bool:
       3. Chinese tags alone (section headers may have changed)
       4. Numbered question blocks like "Q1." / "题目1" / generic numbered items
     """
-    has_q_marker = bool(re.search(r'QUESTION\s+\d+', text, re.I))
+    has_q_marker = bool(re.search(
+        r'(?:^|\n)\s*(?:QUESTION|Q)[\s_-]*\d+\s*[:.：\-]?', text, re.I | re.M))
+    has_cn_q_marker = bool(re.search(
+        r'(?:^|\n)\s*(?:题目?[\s_-]*\d+|第\s*\d+\s*题)\s*[:.：\-]?', text,
+        re.I | re.M))
     has_cn_tag = bool(re.search(r'【(选择题|简答题|单选题|多选题|判断题|填空题|论述题|问答题|问题|题目)】', text))
     has_part = bool(re.search(r'PART\s+[IVX\d]+', text, re.I))
-    has_numbered_q = bool(re.search(r'(?:^|\n)\s*(?:Q|题目?)\s*\d+\s*[:.：]', text, re.I | re.M))
+    has_numbered_q = has_q_marker or has_cn_q_marker
     # If any two signals are present, or one strong signal
     if has_q_marker and (has_cn_tag or has_part):
         return True
+    if has_cn_q_marker and (has_cn_tag or has_part):
+        return True
     if has_q_marker:
+        return True
+    if has_cn_q_marker:
         return True
     if has_cn_tag:
         return True
-    if has_numbered_q and len(list(re.finditer(r'(?:^|\n)\s*(?:Q|题目?)\s*\d+\s*[:.：]', text, re.I | re.M))) >= 2:
+    if has_numbered_q:
         return True
     return False
+
+
+def _match_question_header(line: str) -> Optional[tuple[int, str]]:
+    """Return (question_number, inline_title) for a top-level question header line."""
+    normalized = line.lstrip("\ufeff").strip()
+    for pattern in _QUESTION_HEADER_PATTERNS:
+        match = pattern.match(normalized)
+        if match:
+            return int(match.group(1)), match.group(2).strip()
+    return None
+
+
+def _clean_question_block(block: str) -> str:
+    """Remove wrapper separators while preserving the actual question body."""
+    lines = [line.rstrip() for line in block.splitlines()]
+    while lines and (
+        not lines[0].strip() or re.fullmatch(r'[-=]{5,}', lines[0].strip())
+    ):
+        lines.pop(0)
+    while lines and (
+        not lines[-1].strip()
+        or re.fullmatch(r'[-=]{5,}', lines[-1].strip())
+        or re.match(r'^(END OF QUESTION SET|END OF QUESTIONS|END)\b', lines[-1].strip(), re.I)
+    ):
+        lines.pop()
+    return "\n".join(lines).strip()
+
+
+def _extract_question_blocks(text: str) -> List[tuple[int, str]]:
+    """Extract question blocks using explicit top-level headers only.
+
+    This is intentionally stricter than separator-based splitting so internal
+    lines like "-----" or subparts like 【选择题】/【简答题】 stay inside the same
+    atomic question block.
+    """
+    blocks: List[tuple[int, str]] = []
+    current_qnum: Optional[int] = None
+    current_lines: List[str] = []
+
+    for raw_line in text.splitlines():
+        header = _match_question_header(raw_line)
+        if header is not None:
+            if current_qnum is not None:
+                block = _clean_question_block("\n".join(current_lines))
+                if block:
+                    blocks.append((current_qnum, block))
+            current_qnum, inline_title = header
+            current_lines = [inline_title] if inline_title else []
+            continue
+
+        if current_qnum is not None:
+            current_lines.append(raw_line)
+
+    if current_qnum is not None:
+        block = _clean_question_block("\n".join(current_lines))
+        if block:
+            blocks.append((current_qnum, block))
+
+    return blocks
 
 
 def _is_hepta_rubric_txt(text: str) -> bool:
@@ -296,52 +377,19 @@ def _parse_hepta_questions_txt(text: str) -> List[Question]:
     """
     questions: List[Question] = []
 
-    # --- Strategy 1: "QUESTION N:" markers ---
-    q_iter = list(re.finditer(r'QUESTION\s+(\d+)\s*[:.：]', text, re.I))
-    if q_iter:
-        total_q = len(q_iter)
-        for idx, m in enumerate(q_iter):
-            qnum = int(m.group(1))
-            start = m.end()
-            end = q_iter[idx + 1].start() if idx + 1 < len(q_iter) else len(text)
-            block = text[start:end].strip()
+    # --- Strategy 1: explicit top-level question headers ---
+    explicit_blocks = _extract_question_blocks(text)
+    if explicit_blocks:
+        total_q = len(explicit_blocks)
+        for qnum, block in explicit_blocks:
             area = _infer_area(qnum, total_q)
-
-            # Strip trailing separator lines (--- / ===)
-            block = re.split(r'\n[-=]{20,}\s*$', block, maxsplit=1)[0].strip()
-            if block:
-                questions.append(Question(
-                    id=str(qnum), area=area, dimension="ALL",
-                    text=block, reference_answer="", max_score=100.0))
+            questions.append(Question(
+                id=str(qnum), area=area, dimension="ALL",
+                text=block, reference_answer="", max_score=100.0))
         if questions:
             return questions
 
-    # --- Strategy 2: "Q1." / "题目1:" / "1." numbered patterns ---
-    numbered_patterns = [
-        r'(?:^|\n)\s*Q(\d+)\s*[:.：]\s*',
-        r'(?:^|\n)\s*题目?\s*(\d+)\s*[:.：]\s*',
-        r'(?:^|\n)\s*(\d+)\s*[.)）]\s+',
-    ]
-    for pat in numbered_patterns:
-        n_iter = list(re.finditer(pat, text, re.I | re.M))
-        if len(n_iter) >= 2:
-            total_q = len(n_iter)
-            for idx, m in enumerate(n_iter):
-                qnum = int(m.group(1))
-                start = m.end()
-                end = n_iter[idx + 1].start() if idx + 1 < len(n_iter) else len(text)
-                block = text[start:end].strip()
-                block = re.split(r'\n[-=]{20,}\s*$', block, maxsplit=1)[0].strip()
-                if not block:
-                    continue
-                area = _infer_area(qnum, total_q)
-                questions.append(Question(
-                    id=str(qnum), area=area, dimension="ALL",
-                    text=block, reference_answer="", max_score=100.0))
-            if questions:
-                return questions
-
-    # --- Strategy 3: Split by separator lines (=== or ---) ---
+    # --- Strategy 2: Split by separator lines (=== or ---) ---
     blocks = re.split(r'(?:={20,}|-{20,})', text)
     qnum = 0
     for b in blocks:
