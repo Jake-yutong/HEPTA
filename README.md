@@ -1,5 +1,9 @@
 # HEPTA — AI HCI Education Performance Test Benchmark
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://heptahci.streamlit.app/)
+
+> **Live Demo**: [https://heptahci.streamlit.app/](https://heptahci.streamlit.app/) — no installation required.
+
 **HEPTA** is an automated benchmarking framework for evaluating the pedagogical effectiveness of Large Language Models (LLMs) serving as HCI teaching agents. It operationalises a Normalized Gain (N-gain) model across seven assessment dimensions derived from the Stanford HCI Qual examination structure.
 
 ## Motivation
