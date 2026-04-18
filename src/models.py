@@ -2,7 +2,7 @@
 
 Supports:
 - OpenAI-compatible providers: OpenAI, DeepSeek, Qwen (Alibaba), Kimi (Moonshot),
-  Minimax, and any custom OpenAI-compatible endpoint.
+  Minimax, Zhipu (GLM), and any custom OpenAI-compatible endpoint.
 - Anthropic: Claude model family via the Anthropic Messages API.
 """
 
@@ -25,6 +25,7 @@ PROVIDER_BASE_URLS: Dict[str, Optional[str]] = {
     "qwen":      "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "kimi":      "https://api.moonshot.cn/v1",
     "minimax":   "https://api.minimax.chat/v1",
+    "zhipu":     "https://open.bigmodel.cn/api/paas/v4/",
     "anthropic": None,   # uses its own SDK
     "custom":    None,   # user-supplied
 }
@@ -36,6 +37,7 @@ PROVIDER_SUGGESTED_MODELS: Dict[str, List[str]] = {
     "qwen":      ["qwen-max", "qwen-plus", "qwen-turbo"],
     "kimi":      ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
     "minimax":   ["MiniMax-Text-01", "abab6.5t-chat"],
+    "zhipu":     ["glm-4-plus", "glm-4-air", "glm-4-flash", "glm-z1-plus", "glm-z1-air", "glm-z1-flash"],
     "anthropic": ["claude-opus-4-5", "claude-sonnet-4-5", "claude-haiku-3-5"],
     "custom":    [],
 }
@@ -95,11 +97,11 @@ class OpenAICompatibleClient(LLMClient):
     def _is_thinking_model(model_name: str) -> bool:
         """Return True for models that have a thinking/reasoning mode enabled by default.
 
-        Covers: deepseek-reasoner, DeepSeek-R1 variants, Qwen3 series, and any
-        model whose name contains 'thinking' or 'reasoner'.
+        Covers: deepseek-reasoner, DeepSeek-R1 variants, Qwen3 series, Zhipu GLM-Z1
+        series, and any model whose name contains 'thinking' or 'reasoner'.
         """
         lower = model_name.lower()
-        return any(k in lower for k in ("reasoner", "-r1", "qwen3", "thinking"))
+        return any(k in lower for k in ("reasoner", "-r1", "qwen3", "thinking", "glm-z1"))
 
     def generate(self, prompt: str, system: str = "") -> str:
         messages = []
